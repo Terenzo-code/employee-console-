@@ -1,5 +1,11 @@
 # Employee Console
 
+🔗 **Live demo:** https://employee-console.vercel.app
+> Note: the backend runs on a free Render instance, which sleeps after 15
+> minutes of no traffic. The first request after that can take 30–60
+> seconds to wake back up — if the roster looks stuck loading on first
+> visit, that's why, just give it a moment.
+
 A small internal tool for managing an employee roster, with username/password
 accounts, role-based permissions, and JWT auth (short-lived access token +
 httpOnly refresh cookie).
@@ -25,52 +31,6 @@ access token expires, or the page is refreshed and memory is empty, the
 frontend calls `GET /refresh` to silently mint a new access token from the
 cookie. `POST /logout` clears the cookie and invalidates the stored
 refresh token server-side.
-
-## Why the API wasn't working (the database problem)
-
-The `.env` file was empty, so `mongoose.connect(process.env.DATABASE_URI)`
-in `config/dbConn.js` had nothing to connect to and it hung/failed
-silently. That's the "database problem" mentioned in the old notes — there
-was nothing wrong with the connection code itself, it just had no
-credentials to use. See **Setup → Backend** below for what to put there.
-
-## Other bugs fixed in the backend
-
-- **`middleware/errorHandler.js`** required `./LogEvents` but the file is
-  `logEvents.js`. Windows' filesystem is case-insensitive so this hid the
-  bug locally; on Linux/Mac (and most hosting) it throws `MODULE_NOT_FOUND`
-  and crashes any request that errors.
-- **`middleware/logEvents.js`** created a `Logs` folder but appended log
-  lines to a `logs` folder — two different directories. Every log write
-  failed with `ENOENT`. Now both use `logs`.
-- **`model/Employee.js`** had a typo'd field, `lastnamename`, instead of
-  `lastname`. Combined with the bugs below, employee records never saved
-  correctly.
-- **`controllers/employeesControl.js`**:
-  - `getAllEmployees` never actually sent the employee list back — it only
-    handled the empty case and otherwise returned nothing, so every
-    request hung until it timed out.
-  - `createNewEmployee` had two typos (`fistname`, `req.bod.lastname`)
-    that made every new employee fail validation or crash.
-  - `getEmployee` read the id from `req.body` on a route that only ever
-    supplies `req.params.id`, so single-employee lookups always failed.
-- **Cookie settings** (`authController.js`, `logoutController.js`) set
-  `secure: true` (commented out) with `sameSite: 'None'`. Browsers drop
-  such cookies unless the page is served over https, which broke login on
-  `http://localhost`. It's now `secure: process.env.NODE_ENV === 'production'`.
-- **Access token lifetime** was 30 seconds, which made the app look broken
-  within a few seconds of logging in even when everything else worked.
-  Bumped to 15 minutes (refresh token stays at a longer-lived 7 days).
-- **`config/allowedOrigins.js`** didn't include the React dev server's
-  origin, so CORS blocked every request from the frontend. Added
-  `http://localhost:5173` (Vite) and `http://localhost:3000`.
-- Removed an unused, non-existent `date-fns/locale` import in `server.js`
-  and a stray Windows crash-dump file.
-
-`backend/users.json`, `backend/model/users.json`, and
-`backend/model/employees.json` are leftovers from an earlier, pre-MongoDB
-version of this project. Nothing reads them anymore — MongoDB is the only
-datastore now — they're left in place only for reference.
 
 ## Setup
 
