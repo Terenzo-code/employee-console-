@@ -8,6 +8,7 @@ const allowedOrigins = [
     // Common CRA / alt dev ports, kept for convenience
     'http://localhost:3000',
     'http://127.0.0.1:3000',
+    'https://employee-console.vercel.app',
 ];
 
 module.exports = allowedOrigins;
